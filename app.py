@@ -44,9 +44,9 @@ st.markdown("""
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv(r"E:\data science\recommendation\anime.csv")
+    df = pd.read_csv("anime.csv")
     similarity = joblib.load(
-        r"E:\data science\recommendation\similarity.pkl"
+        "similarity.pkl"
     )
     return df, similarity
 
