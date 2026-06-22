@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
-import joblib
+
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 st.set_page_config(
     page_title="Anime Recommender",
@@ -10,10 +13,6 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.main {
-    background-color: #0E1117;
-}
-
 .anime-card {
     background: linear-gradient(135deg, #1f1c2c, #928dab);
     padding: 15px;
@@ -42,23 +41,35 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data
+
+@st.cache_resource
 def load_data():
     df = pd.read_csv("anime.csv")
-    similarity = joblib.load(
-        "similarity.pkl"
-    )
-    return df, similarity
 
-df, similarity = load_data()
+    df["genre"] = df["genre"].fillna("Unknown")
+
+    cv = CountVectorizer(stop_words="english")
+    genre_matrix = cv.fit_transform(df["genre"])
+
+    return df, genre_matrix
+
+
+df, genre_matrix = load_data()
+
 
 def recommend_anime(anime_name):
+
     if anime_name not in df["name"].values:
         return []
 
     index = df[df["name"] == anime_name].index[0]
 
-    distances = list(enumerate(similarity[index]))
+    similarity_scores = cosine_similarity(
+        genre_matrix[index],
+        genre_matrix
+    )[0]
+
+    distances = list(enumerate(similarity_scores))
 
     sorted_distances = sorted(
         distances,
@@ -68,10 +79,17 @@ def recommend_anime(anime_name):
 
     recommendations = []
 
-    for i in sorted_distances[1:11]:
-        recommendations.append(df.iloc[i[0]]["name"])
+    for i in sorted_distances:
+        anime_title = df.iloc[i[0]]["name"]
+
+        if anime_title != anime_name:
+            recommendations.append(anime_title)
+
+        if len(recommendations) == 10:
+            break
 
     return recommendations
+
 
 st.markdown(
     '<div class="title">🎌 Anime Recommendation System</div>',
@@ -109,6 +127,7 @@ if recommend_btn:
     cols = st.columns(2)
 
     for idx, anime in enumerate(recommendations):
+
         with cols[idx % 2]:
             st.markdown(
                 f"""
